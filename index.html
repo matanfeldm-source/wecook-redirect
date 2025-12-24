@@ -4,54 +4,6 @@
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>Opening WeCook...</title>
-    <script>
-        // Wait for DOM to load before accessing elements
-        document.addEventListener('DOMContentLoaded', function() {
-            // Get recipe ID from query parameter
-            // GitHub Pages works best with query parameters: /?id={id}
-            function getRecipeId() {
-                // Try query parameter first
-                const urlParams = new URLSearchParams(window.location.search);
-                const queryId = urlParams.get('id');
-                if (queryId) return queryId;
-                
-                // Try path as fallback (for 404.html routing)
-                const pathParts = window.location.pathname.split('/').filter(p => p);
-                const recipeIndex = pathParts.indexOf('recipe');
-                if (recipeIndex !== -1 && pathParts[recipeIndex + 1]) {
-                    return pathParts[recipeIndex + 1];
-                }
-                
-                return null;
-            }
-            
-            const recipeId = getRecipeId();
-            
-            if (recipeId && recipeId !== 'index.html' && recipeId !== 'redirect.html') {
-                // Try to open app with custom scheme
-                const deepLink = `wecook://recipe/${recipeId}`;
-                
-                // Attempt to open the app immediately
-                window.location.href = deepLink;
-                
-                // Fallback: if app doesn't open, show message after 2 seconds
-                setTimeout(function() {
-                    const fallbackEl = document.getElementById('fallback');
-                    const linkEl = document.getElementById('link');
-                    if (fallbackEl) fallbackEl.style.display = 'block';
-                    if (linkEl) {
-                        linkEl.href = deepLink;
-                        linkEl.textContent = `Tap here to open: ${deepLink}`;
-                    }
-                }, 2000);
-            } else {
-                const errorEl = document.getElementById('error');
-                const spinnerEl = document.getElementById('spinner');
-                if (errorEl) errorEl.style.display = 'block';
-                if (spinnerEl) spinnerEl.style.display = 'none';
-            }
-        });
-    </script>
     <style>
         body {
             font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
@@ -120,8 +72,76 @@
         </div>
         <div id="error">
             <p>Recipe ID not found. Please check the link.</p>
-            <p style="font-size: 0.9rem; color: #666; margin-top: 0.5rem;">URL format: your-domain.com/recipe/RECIPE_ID</p>
+            <p style="font-size: 0.9rem; color: #666; margin-top: 0.5rem;">URL format: your-domain.com/?id=RECIPE_ID or /recipe/RECIPE_ID</p>
         </div>
     </div>
+    <script>
+        (function() {
+            // Get recipe ID from query parameter or path
+            function getRecipeId() {
+                // Try query parameter first
+                const urlParams = new URLSearchParams(window.location.search);
+                const queryId = urlParams.get('id');
+                if (queryId) return queryId;
+                
+                // Try path as fallback
+                const pathParts = window.location.pathname.split('/').filter(p => p);
+                const recipeIndex = pathParts.indexOf('recipe');
+                if (recipeIndex !== -1 && pathParts[recipeIndex + 1]) {
+                    return pathParts[recipeIndex + 1];
+                }
+                
+                return null;
+            }
+            
+            function showError() {
+                try {
+                    const errorEl = document.getElementById('error');
+                    const spinnerEl = document.getElementById('spinner');
+                    if (errorEl) errorEl.style.display = 'block';
+                    if (spinnerEl) spinnerEl.style.display = 'none';
+                } catch (e) {
+                    console.error('Error showing error message:', e);
+                }
+            }
+            
+            function showFallback(deepLink) {
+                try {
+                    const fallbackEl = document.getElementById('fallback');
+                    const linkEl = document.getElementById('link');
+                    if (fallbackEl) fallbackEl.style.display = 'block';
+                    if (linkEl) {
+                        linkEl.href = deepLink;
+                        linkEl.textContent = 'Tap to Open App';
+                    }
+                } catch (e) {
+                    console.error('Error showing fallback:', e);
+                }
+            }
+            
+            const recipeId = getRecipeId();
+            
+            if (recipeId && recipeId !== 'index.html' && recipeId !== 'redirect.html' && recipeId !== '') {
+                // Try to open app with custom scheme
+                const deepLink = 'wecook://recipe/' + recipeId;
+                
+                // Attempt to open the app immediately
+                try {
+                    window.location.href = deepLink;
+                } catch (e) {
+                    console.error('Error redirecting:', e);
+                    showError();
+                    return;
+                }
+                
+                // Fallback: if app doesn't open, show message after 2 seconds
+                setTimeout(function() {
+                    showFallback(deepLink);
+                }, 2000);
+            } else {
+                showError();
+            }
+        })();
+    </script>
 </body>
 </html>
