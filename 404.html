@@ -73,26 +73,52 @@
         <div id="error">
             <p>Recipe ID not found. Please check the link.</p>
             <p style="font-size: 0.9rem; color: #666; margin-top: 0.5rem;">URL format: your-domain.com/recipe/RECIPE_ID</p>
+            <div id="debug" style="display: none; margin-top: 1rem; padding: 1rem; background: #f0f0f0; border-radius: 4px; font-size: 0.8rem; text-align: left;">
+                <strong>Debug Info:</strong><br>
+                <span id="debug-url"></span><br>
+                <span id="debug-path"></span><br>
+                <span id="debug-id"></span>
+            </div>
         </div>
     </div>
     <script>
         (function() {
             // GitHub Pages 404.html catches all unmatched routes
-            // Extract recipe ID from URL path: /recipe/{id}
+            // Extract recipe ID from URL path: /wecook-redirect/recipe/{id}
             function getRecipeId() {
                 const pathParts = window.location.pathname.split('/').filter(p => p);
                 
-                // Look for /recipe/{id} pattern
+                // Debug: log the path to see what we're getting
+                console.log('Path parts:', pathParts);
+                console.log('Full pathname:', window.location.pathname);
+                
+                // Look for /recipe/{id} pattern (could be /wecook-redirect/recipe/{id})
                 const recipeIndex = pathParts.indexOf('recipe');
                 if (recipeIndex !== -1 && pathParts[recipeIndex + 1]) {
-                    return pathParts[recipeIndex + 1];
+                    const id = pathParts[recipeIndex + 1];
+                    console.log('Found recipe ID from path:', id);
+                    return id;
+                }
+                
+                // Try last path segment if it looks like an ID (long alphanumeric string)
+                if (pathParts.length > 0) {
+                    const lastPart = pathParts[pathParts.length - 1];
+                    // Check if it looks like a recipe ID (alphanumeric, at least 10 chars)
+                    if (lastPart && lastPart.length >= 10 && /^[a-zA-Z0-9]+$/.test(lastPart)) {
+                        console.log('Found recipe ID from last segment:', lastPart);
+                        return lastPart;
+                    }
                 }
                 
                 // Try query parameter as fallback
                 const urlParams = new URLSearchParams(window.location.search);
                 const queryId = urlParams.get('id');
-                if (queryId) return queryId;
+                if (queryId) {
+                    console.log('Found recipe ID from query:', queryId);
+                    return queryId;
+                }
                 
+                console.log('No recipe ID found');
                 return null;
             }
             
@@ -102,6 +128,17 @@
                     const spinnerEl = document.getElementById('spinner');
                     if (errorEl) errorEl.style.display = 'block';
                     if (spinnerEl) spinnerEl.style.display = 'none';
+                    
+                    // Show debug info
+                    const debugEl = document.getElementById('debug');
+                    const debugUrlEl = document.getElementById('debug-url');
+                    const debugPathEl = document.getElementById('debug-path');
+                    const debugIdEl = document.getElementById('debug-id');
+                    
+                    if (debugEl) debugEl.style.display = 'block';
+                    if (debugUrlEl) debugUrlEl.textContent = 'URL: ' + window.location.href;
+                    if (debugPathEl) debugPathEl.textContent = 'Path: ' + window.location.pathname;
+                    if (debugIdEl) debugIdEl.textContent = 'Path Parts: ' + JSON.stringify(window.location.pathname.split('/').filter(p => p));
                 } catch (e) {
                     console.error('Error showing error message:', e);
                 }
@@ -122,10 +159,13 @@
             }
             
             const recipeId = getRecipeId();
+            console.log('Final recipe ID:', recipeId);
+            console.log('Full URL:', window.location.href);
             
-            if (recipeId && recipeId !== 'index.html' && recipeId !== '404.html' && recipeId !== '') {
+            if (recipeId && recipeId !== 'index.html' && recipeId !== '404.html' && recipeId !== '' && recipeId !== 'wecook-redirect') {
                 // Try to open app with custom scheme
                 const deepLink = 'wecook://recipe/' + recipeId;
+                console.log('Redirecting to:', deepLink);
                 
                 // Attempt to open the app immediately
                 try {
@@ -141,6 +181,7 @@
                     showFallback(deepLink);
                 }, 2000);
             } else {
+                console.log('No valid recipe ID found, showing error');
                 showError();
             }
         })();
